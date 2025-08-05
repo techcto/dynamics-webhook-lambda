@@ -1,0 +1,117 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Lambda webhook for MS Dynamics -> Customer.io with API Gateway and API Key auth
+
+Parameters:
+  CustomerIOSiteId:
+    Type: String
+    NoEcho: true
+  CustomerIOApiKey:
+    Type: String
+    NoEcho: true
+  CustomerIOApiHost:
+    Type: String
+    Default: track.customer.io
+
+Resources:
+  WebhookFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: DynamicsCustomerIOWebhook
+      Handler: src/handler.handler
+      Runtime: nodejs20.x
+      MemorySize: 128
+      Timeout: 10
+      Environment:
+        Variables:
+          CUSTOMER_IO_SITE_ID: !Ref CustomerIOSiteId
+          CUSTOMER_IO_API_KEY: !Ref CustomerIOApiKey
+          CUSTOMER_IO_API_HOST: !Ref CustomerIOApiHost
+      Code:
+        S3Bucket: dynamics-webhook
+        S3Key: dynamics-webhook.zip
+      Role: !GetAtt LambdaExecutionRole.Arn
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [lambda.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  ApiGatewayRestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: DynamicsWebhookAPI
+
+  ApiGatewayResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
+      PathPart: webhook
+
+  ApiGatewayMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ResourceId: !Ref ApiGatewayResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebhookFunction.Arn}/invocations
+
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: ApiGatewayMethod
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+
+  ApiGatewayUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      UsagePlanName: DynamicsUsagePlan
+
+  ApiGatewayKey:
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Name: !Sub "${AWS::StackName}-ApiKey"
+      Enabled: true
+
+  ApiGatewayUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref ApiGatewayKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref ApiGatewayUsagePlan
+
+  LambdaPermissionForApiGateway:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref WebhookFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/POST/webhook
+
+Outputs:
+  WebhookFunctionName:
+    Value: !Ref WebhookFunction
+
+  WebhookFunctionArn:
+    Value: !GetAtt WebhookFunction.Arn
+
+  WebhookInvokeURL:
+    Description: Public endpoint for Dynamics to call
+    Value: !Sub https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod/webhook
+
+  APIKeyValue:
+    Description: API Key for Dynamics to use
+    Value: !Ref ApiGatewayKey
