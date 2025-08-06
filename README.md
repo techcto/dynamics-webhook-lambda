@@ -51,7 +51,7 @@ Create `devops/build.json` with the following format:
 ### Step 1: Zip the Lambda source
 
 ```bash
-zip -r webhook.zip src/
+zip -r dynamics-webhook.zip src/
 ```
 
 ---
@@ -61,7 +61,7 @@ zip -r webhook.zip src/
 Replace the bucket and path with your own:
 
 ```bash
-aws s3 cp webhook.zip s3://your-bucket-name/path/webhook.zip
+aws s3 cp dynamics-webhook.zip s3://<your-bucket-name>/<path>/webhook.zip
 ```
 
 ---
@@ -83,17 +83,14 @@ The script reads `build.json` and converts it to CLI parameters using `jq`.
 
 ```bash
 #!/bin/bash
-set -e
+aws s3 cp devops/dynamics-webhook.yaml s3://dynamics-webhook/dynamics-webhook.yaml --acl public-read
 
-STACK_NAME="dynamics-webhook"
-TEMPLATE_FILE="devops/dynamics-webhook.yaml"
-PARAMS_FILE="devops/build.json"
-
-aws cloudformation deploy \
-  --stack-name $STACK_NAME \
-  --template-file $TEMPLATE_FILE \
-  --parameter-overrides $(jq -r '.[] | "\(.ParameterKey)=\(.ParameterValue)"' $PARAMS_FILE) \
-  --capabilities CAPABILITY_NAMED_IAM
+aws cloudformation create-stack \
+  --disable-rollback \
+  --stack-name dynamics-webhook \
+  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+  --template-url https://s3.amazonaws.com/dynamics-webhook/dynamics-webhook.yaml \
+  --parameters file://devops/build.json
 ```
 
 ---
