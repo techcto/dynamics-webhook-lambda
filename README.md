@@ -13,7 +13,7 @@ dynamics-webhook-lambda/
 │   ├── deploy.sh               # Shell script to deploy using AWS CLI
 │   └── dynamics-webhook.yaml  # CloudFormation template
 ├── src/
-│   └── handler.js              # Lambda source code
+│   └── handler.mjs              # Lambda source code
 ├── .gitignore
 ├── cmd.sh                      # Optional helper
 └── README.md
