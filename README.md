@@ -107,7 +107,6 @@ Obtain your API Key:
 After deployment, test with:
 
 - `https://<your-aws-gateway-api-url>/prod/webhook`
-```
 - Set your authentication method to API Key: Key = x-api-key | Value = <your api key>
 - Compose your message body: 
 
