@@ -97,7 +97,18 @@ aws cloudformation create-stack \
 
 ## 🧪 Testing
 
+Obtain your API Key:
+- Log into your AWS account and navigate to the API Gateway console
+- Locate your new API
+- Navigate to API Keys (left menu)
+- Find and copy your API Key
+
+
 After deployment, test with:
+
+- Get your API endpoint: https://<your aws getway api url>/prod/webhook
+- Set your authentication method to API Key: Key = x-api-key | Value = <your api key>
+- Compose your message body: 
 
 ```json
 {
