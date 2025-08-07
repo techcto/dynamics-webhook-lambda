@@ -74,6 +74,7 @@ Resources:
     DependsOn: ApiGatewayMethod
     Properties:
       RestApiId: !Ref ApiGatewayRestApi
+      StageName: prod
 
   ApiGatewayUsagePlan:
     Type: AWS::ApiGateway::UsagePlan
